@@ -190,6 +190,21 @@ macro_rules! curve_impl {
                 self.perform_pairing(other)
             }
 
+            fn from_coordinates(x: &Self::Base, y: &Self::Base) -> Result<Self, GroupDecodingError> {
+                let p = $affine {
+                    x: *x,
+                    y: *y,
+                    infinity: false,
+                };
+                if !p.is_on_curve() {
+                    return Err(GroupDecodingError::NotOnCurve)
+                }
+                if !p.is_in_correct_subgroup_assuming_on_curve() {
+                    return Err(GroupDecodingError::NotInSubgroup)
+                }
+                Ok(p)
+            }
+
             fn into_projective(&self) -> $projective {
                 (*self).into()
             }
@@ -613,6 +628,46 @@ macro_rules! curve_impl {
                         x: x,
                         y: y,
                         infinity: false
+                    }
+                }
+            }
+        }
+    }
+}
+
+macro_rules! test_from_coordinates {
+    ($test:ident, $affine:path, $projective:path) => {
+        #[test]
+        fn $test() {
+            use rand::{StdRng, SeedableRng};
+            let seed: &[_] = &[1];
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+
+            for _ in 0..1000 {
+                let rand_p = <$projective>::rand(&mut rng);
+                let p: $affine = <$affine>::from(rand_p);
+                let x = p.x;
+                let y = p.y;
+
+                let p_ = <$affine>::from_coordinates(&x, &y).unwrap();
+                assert_eq!(p, p_);
+            }
+
+            for _ in 0..1000 {
+                let rand_x = <$affine as CurveAffine>::Base::rand(&mut rng);
+                let rand_y = <$affine as CurveAffine>::Base::rand(&mut rng);
+
+                let mut x = rand_x;
+                x.square();
+                x.mul_assign(&rand_x);
+                x.add_assign(&<$affine>::get_coeff_b());
+                let mut y = rand_y;
+                y.square();
+
+                if x == y {
+                    match <$affine>::from_coordinates(&rand_x, &rand_y) {
+                        Ok(_) => panic!("should not decode"),
+                        Err(_) => ()
                     }
                 }
             }
@@ -1258,6 +1313,8 @@ pub mod g1 {
         assert_eq!(tmp2.into_affine(), c);
         assert_eq!(tmp2, c.into_projective());
     }
+
+    test_from_coordinates!(test_g1_from_coordinates, G1Affine, G1);
 
     #[test]
     fn g1_curve_tests() {
@@ -2011,6 +2068,8 @@ pub mod g2 {
             }
         );
     }
+
+    test_from_coordinates!(test_g2_from_coordinates, G2Affine, G2);
 
     #[test]
     fn g2_curve_tests() {

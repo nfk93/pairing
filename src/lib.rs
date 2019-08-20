@@ -214,6 +214,9 @@ pub trait CurveAffine:
     /// Perform a pairing
     fn pairing_with(&self, other: &Self::Pair) -> Self::PairingResult;
 
+    /// Returns the point (x,y) if it is on the curve
+    fn from_coordinates(x: &Self::Base, y: &Self::Base) -> Result<Self, GroupDecodingError>;
+
     /// Converts this element into its affine representation.
     fn into_projective(&self) -> Self::Projective;
 
