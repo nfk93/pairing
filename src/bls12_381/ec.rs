@@ -643,6 +643,7 @@ macro_rules! test_from_coordinates {
             let seed: &[_] = &[1];
             let mut rng: StdRng = SeedableRng::from_seed(seed);
 
+            // Check that the correct point is returned, when (x,y) is on curve
             for _ in 0..1000 {
                 let rand_p = <$projective>::rand(&mut rng);
                 let p: $affine = <$affine>::from(rand_p);
@@ -653,6 +654,7 @@ macro_rules! test_from_coordinates {
                 assert_eq!(p, p_);
             }
 
+            // Check that an error is produced when (x,y) is not on curve
             for _ in 0..1000 {
                 let rand_x = <$affine as CurveAffine>::Base::rand(&mut rng);
                 let rand_y = <$affine as CurveAffine>::Base::rand(&mut rng);
@@ -664,16 +666,34 @@ macro_rules! test_from_coordinates {
                 let mut y = rand_y;
                 y.square();
 
-                if x == y {
+                if x != y {
                     match <$affine>::from_coordinates(&rand_x, &rand_y) {
                         Ok(_) => panic!("should not decode"),
                         Err(_) => ()
                     }
                 }
             }
+
+            // Check that a point not in the curve subgroup is correctly scaled by cofactor
+            for _ in 0..1000 {
+                let rand_x = <$affine as CurveAffine>::Base::rand(&mut rng);
+                match <$affine>::get_point_from_x(rand_x, true) {
+                    Some(p) => {
+                        let x = p.x;
+                        let y = p.y;
+                        match <$affine>::from_coordinates(&x, &y) {
+                            Ok(_) => (),
+                            Err(_) => panic!("should return a point"),
+                        }
+                    },
+                    None => (),
+                }
+            }
         }
     }
 }
+
+// some comment
 
 pub mod g1 {
     use super::super::{Bls12, Fq, Fq12, FqRepr, Fr, FrRepr};
