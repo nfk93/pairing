@@ -675,6 +675,8 @@ macro_rules! test_from_coordinates {
     }
 }
 
+// some other comment
+
 pub mod g1 {
     use super::super::{Bls12, Fq, Fq12, FqRepr, Fr, FrRepr};
     use super::g2::G2Affine;
